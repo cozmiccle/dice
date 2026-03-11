@@ -104,7 +104,7 @@ struct RollResult {
 
 // MARK: - App State
 
-class AppState: NSObject, ObservableObject, NSWindowDelegate {
+class AppState: ObservableObject {
     @Published var selectedDie: DieType = .d6
     @Published var result: RollResult? = nil
     @Published var isRolling = false
@@ -120,10 +120,6 @@ class AppState: NSObject, ObservableObject, NSWindowDelegate {
             }
         }
     }
-
-    @Published var isDetached = false
-    @Published var shouldCloseOnPopoverAppear = true
-    weak var detachedWindow: NSWindow?
 
     func roll() {
         guard !isRolling else { return }
@@ -148,52 +144,6 @@ class AppState: NSObject, ObservableObject, NSWindowDelegate {
                 self.result = self.selectedDie.roll(showKanji: self.showKanji)
                 self.isRolling = false
             }
-        }
-    }
-
-    func closeDetachedWindow() {
-        if let window = detachedWindow {
-            window.close()
-            detachedWindow = nil
-            isDetached = false
-        }
-    }
-
-    func toggleDetachedWindow() {
-        if let window = detachedWindow {
-            window.close()
-            detachedWindow = nil
-            isDetached = false
-            return
-        }
-
-        let contentRect = NSRect(x: 0, y: 0, width: 320, height: 440)
-        let window = NSWindow(
-            contentRect: contentRect,
-            styleMask: [.borderless, .closable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.isMovableByWindowBackground = true
-        window.isReleasedWhenClosed = false
-        window.delegate = self
-
-        let hostingView = NSHostingView(rootView: DicePopoverView().environmentObject(self))
-        window.contentView = hostingView
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-
-        detachedWindow = window
-        isDetached = true
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        if let closingWindow = notification.object as? NSWindow, closingWindow == detachedWindow {
-            detachedWindow = nil
-            isDetached = false
         }
     }
 }
@@ -272,7 +222,7 @@ struct DicePopoverView: View {
 
             VStack(spacing: 0) {
                 // Header
-                HStack(spacing: 8) {
+                HStack {
                     Text("Dice Roller")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
@@ -327,12 +277,6 @@ struct DicePopoverView: View {
         }
         .frame(width: 320)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .onAppear {
-            if appState.shouldCloseOnPopoverAppear {
-                appState.closeDetachedWindow()
-            }
-            appState.shouldCloseOnPopoverAppear = true
-        }
     }
 
     private func sectionLabel(_ text: String) -> some View {
@@ -613,7 +557,7 @@ struct QuitButton: View {
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(.secondary)
                     }
-
+                    
                 }
                 .scaleEffect(isHovered ? 1.02 : 1.0)
             }
@@ -621,23 +565,7 @@ struct QuitButton: View {
             .padding(.horizontal, 0)
             .onHover{ isHovered = $0 }
             .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isHovered)
-
             Spacer()
-
-            Button {
-                appState.shouldCloseOnPopoverAppear = false
-                appState.toggleDetachedWindow()
-            } label: {
-                Image(systemName: "safari")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                    )
-            }
-            .buttonStyle(.plain)
         }
     }
 }
