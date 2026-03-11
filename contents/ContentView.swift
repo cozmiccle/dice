@@ -272,8 +272,10 @@ struct DicePopoverView: View {
                 ResultView()
                     .padding(.vertical, 4)
                 
+                Divider().opacity(0.3)
+                
                 QuickRollToggle()
-                    .padding(.bottom, 16)
+                    .padding(.vertical, 16)
                 
                 RollButton()
                     .padding(.horizontal, 16)
