@@ -147,7 +147,7 @@ class AppState: ObservableObject {
     @Published var result: RollResult? = nil
     @Published var isRolling = false
     @Published var instantRoll = false
-    @Published var showKanji = true {
+    @Published var showKanji = false {
         didSet {
             if let current = result {
                 let n = current.numeric
@@ -261,7 +261,7 @@ struct DicePopoverView: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Text("Dice Roller")
+                    Text("Dyce")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
                     Spacer()
