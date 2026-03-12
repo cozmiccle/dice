@@ -62,7 +62,10 @@ enum DieType: String, CaseIterable, Identifiable {
         case .d8:   return "八"
         case .d10:  return "十"
         case .d12:  return "十二"
-        default:    return ""
+        case .d20:  return "二十"
+        case .d40:  return "四十"
+        case .d50:  return "五十"
+        case .d100: return "百"
         }
     }
     var symbolName: String? {
@@ -87,10 +90,45 @@ enum DieType: String, CaseIterable, Identifiable {
                 ? (n == 1 ? "表" : "裏")
                 : (n == 1 ? "Heads" : "Tails")
         } else {
-            display = "\(n)"
+            display = showKanji ? n.japaneseNumeral : "\(n)"
         }
 
         return RollResult(display: display, numeric: n, die: self)
+    }
+    
+    func displayName(showKanji: Bool) -> String {
+        if showKanji, self != .coin, !kanji.isEmpty {
+            return kanji
+        }
+        return rawValue
+    }
+}
+
+// MARK: - Japanese Numerals
+
+private extension Int {
+    /// Japanese numerals for 0...100 (e.g. 17 -> 十七, 100 -> 百).
+    var japaneseNumeral: String {
+        if self == 0 { return "零" }
+        if self == 100 { return "百" }
+        guard (1...99).contains(self) else { return "\(self)" }
+        
+        let ones: [Int: String] = [
+            1: "一", 2: "二", 3: "三", 4: "四", 5: "五",
+            6: "六", 7: "七", 8: "八", 9: "九"
+        ]
+        
+        let tens = self / 10
+        let unit = self % 10
+        
+        var s = ""
+        if tens > 0 {
+            s += (tens == 1 ? "十" : (ones[tens] ?? "") + "十")
+        }
+        if unit > 0 {
+            s += ones[unit] ?? ""
+        }
+        return s
     }
 }
 
@@ -115,7 +153,7 @@ class AppState: ObservableObject {
                 let n = current.numeric
                 let display = current.die == .coin
                     ? (showKanji ? (n == 1 ? "表" : "裏") : (n == 1 ? "Heads" : "Tails"))
-                    : "\(n)"
+                    : (showKanji ? n.japaneseNumeral : "\(n)")
                 result = RollResult(display: display, numeric: n, die: current.die)
             }
         }
@@ -406,9 +444,14 @@ struct NumericDieButton: View {
         } label: {
             ZStack {
                 GlassTile(isSelected: isSelected, width: 60, height: 36, cornerRadius: 10)
-                Text(die.rawValue)
-                    .font(.system(size: 13, weight: isSelected ? .bold : .semibold, design: .rounded))
-                    .foregroundStyle(isSelected ? .white : .primary)
+                if appState.showKanji {
+                    Text(die.displayName(showKanji: appState.showKanji))
+                        .font(.custom("Zen Maru Gothic",size: 13))
+                } else {
+                    Text(die.displayName(showKanji: appState.showKanji))
+                        .font(.system(size: 13, weight: isSelected ? .bold : .semibold, design: .rounded))
+                        .foregroundStyle(isSelected ? .white : .primary)
+                }
             }
             .scaleEffect(isSelected ? 1.05 : (isHovered ? 1.02 : 1.0))
         }
@@ -441,7 +484,7 @@ struct ResultView: View {
                         .transition(.opacity)
                 } else if let result = appState.result {
                     Text(result.display)
-                        .font(appState.showKanji && appState.selectedDie == .coin
+                        .font(appState.showKanji
                               ? .custom("Zen Maru Gothic Bold", size: 36)
                               : .system(size: 36, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
@@ -449,12 +492,13 @@ struct ResultView: View {
                         .id(result.display)
                         .transition(.scale(scale: 0.8).combined(with: .opacity))
 
-                    Text(appState.selectedDie == .coin ? "coin flip" : appState.selectedDie.rawValue)
+                    Text(appState.selectedDie == .coin ? "coin flip" : appState.selectedDie.displayName(showKanji: appState.showKanji))
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(.tertiary)
                 } else {
-                    Text(appState.selectedDie == .coin ? "Flip a coin" : "Roll \(appState.selectedDie.rawValue)")
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                    Text(appState.selectedDie == .coin ? "Flip a coin" : "Roll \(appState.selectedDie.displayName(showKanji: appState.showKanji))")
+                        .font(
+                            appState.showKanji ? .custom("Zen Maru Gothic Bold", size: 16) : .system(size: 16, weight: .medium, design: .rounded))
                         .foregroundStyle(.tertiary)
                 }
             }
